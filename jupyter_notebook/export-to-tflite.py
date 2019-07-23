@@ -1,3 +1,9 @@
+# Usage:
+# $ export-to-tflite.py model.h5
+# $ export-to-tflite.py model.h5 uint8
+# $ export-to-tflite.py model.h5 size
+
+
 import tensorflow as tf
 import os, sys
 

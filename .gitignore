@@ -131,3 +131,4 @@ dkms.conf
 
 # Project specific
 build-stm32/
+.ipynb_checkpoints/
