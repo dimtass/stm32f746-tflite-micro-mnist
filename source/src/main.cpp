@@ -325,9 +325,9 @@ void RunInference(struct tflite_model *tf, float *data, size_t data_size, uint8_
         tf->error_reporter->Report("Invoke failed\n");
     }
     uint32_t cycles = dwtGetCycles();
-    float time_ms = dwtCyclesToFloatMs(cycles);
     restoreInts(ints);
-
+    
+    float time_ms = dwtCyclesToFloatMs(cycles);
 
 	flatbuffers::FlatBufferBuilder fbb;
     auto out_vect = fbb.CreateVector((float*) output->data.f, 10);

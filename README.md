@@ -198,7 +198,7 @@ source/schema/create-header.sh
 The Python serial port client is in the `jupyter_notebook/STM32F7Comm` folder.
 In order to build the schema for Python, run:
 ```sh
-flatc --python -o jupyter_notebook/STM32F7Comm ./source/schema/schema.fbs
+flatc --python -o jupyter_notebook/ ./source/schema/schema.fbs
 ```
 
 ## FW details

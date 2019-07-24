@@ -51,12 +51,12 @@ class InferenceOutput(object):
     def TimerMs(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
-        return 0
+            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
+        return 0.0
 
 def InferenceOutputStart(builder): builder.StartObject(3)
 def InferenceOutputAddOutputF(builder, outputF): builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(outputF), 0)
 def InferenceOutputStartOutputFVector(builder, numElems): return builder.StartVector(4, numElems, 4)
 def InferenceOutputAddOutputN(builder, outputN): builder.PrependUint8Slot(1, outputN, 0)
-def InferenceOutputAddTimerMs(builder, timerMs): builder.PrependUint32Slot(2, timerMs, 0)
+def InferenceOutputAddTimerMs(builder, timerMs): builder.PrependFloat32Slot(2, timerMs, 0.0)
 def InferenceOutputEnd(builder): return builder.EndObject()
