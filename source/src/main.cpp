@@ -106,6 +106,13 @@ struct tflite_model {
 };
 struct tflite_model tf;
 
+struct dwtTime {
+    uint32_t fcpu;
+    int s;
+    int ms;
+    int us;
+};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -119,6 +126,14 @@ void ViewModel(struct tflite_model *tf);
 void RunInference(struct tflite_model *tf, float *data, size_t data_size);
 void dbg_uart_parser(uint8_t *buffer, size_t bufferlen, uint8_t sender);
 void fb_uart_parser(uint8_t *buffer, size_t bufferlen, uint8_t sender);
+uint32_t disableInts(void);
+void restoreInts(uint32_t state);
+void dwtIpInit(void);
+void dwtReset(void);
+uint32_t dwtGetCycles(void);
+uint32_t systemCoreClock(void);
+int dwtCyclesToTime(uint64_t clks, struct dwtTime *t);
+float dwtCyclesToFloatMs(uint64_t clks);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -188,7 +203,7 @@ int main(void)
     SystemClock_Config();
 
     /* USER CODE BEGIN SysInit */
-
+    dwtIpInit();
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
@@ -301,17 +316,22 @@ void RunInference(struct tflite_model *tf, float *data, size_t data_size, uint8_
 
     if (debug) TRACE(("Running inference...\n"));
 
-    glb_perf_tmr = 0;
+    // glb_perf_tmr = 0;
+    uint32_t ints = disableInts();
+    dwtReset();
     // Run the model on this input and make sure it succeeds.
     TfLiteStatus invoke_status = tf->interpreter->Invoke();
     if (invoke_status != kTfLiteOk) {
         tf->error_reporter->Report("Invoke failed\n");
     }
-    uint32_t end_time = glb_perf_tmr;
+    uint32_t cycles = dwtGetCycles();
+    float time_ms = dwtCyclesToFloatMs(cycles);
+    restoreInts(ints);
+
 
 	flatbuffers::FlatBufferBuilder fbb;
     auto out_vect = fbb.CreateVector((float*) output->data.f, 10);
-    auto output_f = MnistProt::CreateInferenceOutput(fbb, out_vect, 0, end_time);
+    auto output_f = MnistProt::CreateInferenceOutput(fbb, out_vect, 0, time_ms);
 
     MnistProt::CommandsBuilder builder(fbb);
     builder.add_cmd(MnistProt::Command_CMD_INFERENCE_OUTPUT);
@@ -325,7 +345,7 @@ void RunInference(struct tflite_model *tf, float *data, size_t data_size, uint8_
     HAL_UART_Transmit(&huart7, (uint8_t *)buf, buf_size, 10);
 
     if (debug) {
-        TRACE(("Done in %lu msec...\n", end_time));
+        TRACE(("Done in %f msec...\n", time_ms));
         for (size_t i = 0; i < 10; i++) {
             TRACE(("Out[%d]: %f\n", i, output->data.f[i]));
         }
@@ -549,6 +569,74 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
         fb_uart.rx_ptr_in++;
         HAL_UART_Receive_IT(&huart7, (uint8_t *)&tmp_rx2, 1);
     }
+}
+
+uint32_t disableInts(void)
+{
+    uint32_t state;
+
+    state = __get_PRIMASK();
+    __disable_irq();
+
+    return state;
+}
+
+void restoreInts(uint32_t state)
+{
+   __set_PRIMASK(state);
+}
+
+void dwtIpInit(void)
+{
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+
+#ifdef STM32F7
+    DWT->LAR = 0xC5ACCE55;
+#endif
+
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk | DWT_CTRL_CPIEVTENA_Msk;
+}
+
+void dwtReset(void)
+{
+    DWT->CYCCNT = 0; /* Clear DWT cycle counter */
+}
+
+uint32_t dwtGetCycles(void)
+{
+    return DWT->CYCCNT;
+}
+
+uint32_t systemCoreClock(void)
+{
+    return HAL_RCC_GetSysClockFreq();
+}
+
+int dwtCyclesToTime(uint64_t clks, struct dwtTime *t)
+{
+    if (!t)
+        return -1;
+    uint32_t fcpu = systemCoreClock();
+    uint64_t s  = clks / fcpu;
+    uint64_t ms = (clks * 1000) / fcpu;
+    uint64_t us = (clks * 1000 * 1000) / fcpu;
+    ms -= (s * 1000);
+    us -= (ms * 1000 + s * 1000000);
+    t->fcpu = fcpu;
+    t->s = s;
+    t->ms = ms;
+    t->us = us;
+    return 0;
+}
+
+
+float dwtCyclesToFloatMs(uint64_t clks)
+{
+    float res;
+    float fcpu = (float)systemCoreClock();
+    res = ((float)clks * (float)1000.0) / fcpu;
+    return res;
 }
 
 #ifdef __cplusplus

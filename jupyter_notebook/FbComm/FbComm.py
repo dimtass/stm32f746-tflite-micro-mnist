@@ -106,7 +106,7 @@ class FbComm:
             inp_buf = self.recvDataTcp()
         resp = MnistProt.Commands.Commands.GetRootAsCommands(inp_buf, 0)
         print('Command: %d'% resp.Cmd())
-        print('Execution time: %d msec' % resp.Ouput().TimerMs())
+        print('Execution time: %f msec' % resp.Ouput().TimerMs())
         for i in reversed(range(0, resp.Ouput().OutputFLength())):
             print('Out[%d]: %f' % (i, resp.Ouput().OutputF(i)))
 

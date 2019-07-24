@@ -24,13 +24,13 @@ table InferenceInput {
 table InferenceOutput {
     output_f:[float];
     output_n:ubyte;
-    timer_ms:uint;
+    timer_ms:float;
 }
 
 table Commands {
     cmd:Command;
     stats:Stats;
-    digit:InferenceInput;
+    input:InferenceInput;
     ouput:InferenceOutput;
 }
 

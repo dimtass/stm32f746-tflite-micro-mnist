@@ -201,15 +201,15 @@ struct InferenceOutput FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   uint8_t output_n() const {
     return GetField<uint8_t>(VT_OUTPUT_N, 0);
   }
-  uint32_t timer_ms() const {
-    return GetField<uint32_t>(VT_TIMER_MS, 0);
+  float timer_ms() const {
+    return GetField<float>(VT_TIMER_MS, 0.0f);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_OUTPUT_F) &&
            verifier.VerifyVector(output_f()) &&
            VerifyField<uint8_t>(verifier, VT_OUTPUT_N) &&
-           VerifyField<uint32_t>(verifier, VT_TIMER_MS) &&
+           VerifyField<float>(verifier, VT_TIMER_MS) &&
            verifier.EndTable();
   }
 };
@@ -223,8 +223,8 @@ struct InferenceOutputBuilder {
   void add_output_n(uint8_t output_n) {
     fbb_.AddElement<uint8_t>(InferenceOutput::VT_OUTPUT_N, output_n, 0);
   }
-  void add_timer_ms(uint32_t timer_ms) {
-    fbb_.AddElement<uint32_t>(InferenceOutput::VT_TIMER_MS, timer_ms, 0);
+  void add_timer_ms(float timer_ms) {
+    fbb_.AddElement<float>(InferenceOutput::VT_TIMER_MS, timer_ms, 0.0f);
   }
   explicit InferenceOutputBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -242,7 +242,7 @@ inline flatbuffers::Offset<InferenceOutput> CreateInferenceOutput(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::Vector<float>> output_f = 0,
     uint8_t output_n = 0,
-    uint32_t timer_ms = 0) {
+    float timer_ms = 0.0f) {
   InferenceOutputBuilder builder_(_fbb);
   builder_.add_timer_ms(timer_ms);
   builder_.add_output_f(output_f);
@@ -254,7 +254,7 @@ inline flatbuffers::Offset<InferenceOutput> CreateInferenceOutputDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<float> *output_f = nullptr,
     uint8_t output_n = 0,
-    uint32_t timer_ms = 0) {
+    float timer_ms = 0.0f) {
   auto output_f__ = output_f ? _fbb.CreateVector<float>(*output_f) : 0;
   return MnistProt::CreateInferenceOutput(
       _fbb,
