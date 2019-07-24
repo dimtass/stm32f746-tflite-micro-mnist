@@ -28,6 +28,8 @@ set(OTHER_SRC_FILES "${DEVICE_CONFIG_DIR}/system_stm32f7xx.c")
 set(STM32F7_DEFINES " \
     -DIVECT_TAB_OFFSET=0x0 \
     -DSTM32F746xx \
+    -DARM_MATH_CM7 \
+    '-D__FPU_PRESENT=1' \
     ")
 
 if (USE_OVERCLOCK)
@@ -35,7 +37,7 @@ if (USE_OVERCLOCK)
 endif()
 
 # set compiler optimisations
-set(COMPILER_OPTIMISATION "-g -O3")
+set(COMPILER_OPTIMISATION "-Og -g3")
 
 # add startup and linker file
 set(STARTUP_ASM_FILE "${CMAKE_SOURCE_DIR}/config/startup/startup_stm32f746xx.s")
@@ -84,18 +86,26 @@ enable_language(ASM)
 
 ## Override toolchain flags ##
 # CFLAGS
-set (CMAKE_C_FLAGS "-g -mthumb -fno-builtin -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp -Wall -std=gnu99 -ffunction-sections -fdata-sections -fomit-frame-pointer -mabi=aapcs -fno-unroll-loops -ffast-math -ftree-vectorize" CACHE INTERNAL "c compiler flags")
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -larm_cortexM7lfdp_math -lc -lnosys --specs=nosys.specs -DUSE_HAL_DRIVER -DSTM32F746xx")
+set (STM32F7_ARCH "-mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard")
+set (CMAKE_C_FLAGS "${COMPILER_OPTIMISATION} ${STM32F7_DEFINES} \
+                ${STM32F7_ARCH} \
+                -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 \
+                -Wall -lm -specs=nosys.specs -specs=nano.specs -u _printf_float \
+                -mabi=aapcs -fno-unroll-loops -ffast-math -ftree-vectorize")
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} " CACHE INTERNAL "c compiler flags")
 # CXXFLAGS
-set (CMAKE_CXX_FLAGS "-g -mthumb -fno-builtin -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp -Wall -std=c++11 -ffunction-sections -fdata-sections -fomit-frame-pointer -mabi=aapcs -fno-unroll-loops -ffast-math -ftree-vectorize" CACHE INTERNAL "cxx compiler flags")
+set (CMAKE_CXX_FLAGS "${COMPILER_OPTIMISATION} ${STM32F7_DEFINES} \
+            ${STM32F7_ARCH} \
+            -fmessage-length=0 -ffunction-sections -fmessage-length=0 \
+            -Wall -lm -specs=nosys.specs -specs=nano.specs -u _printf_float")
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti -s")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lm -lc -lnosys --specs=nosys.specs")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE INTERNAL "cxx compiler flags")
 
 # ASMFLAGS
-set (CMAKE_ASM_FLAGS "-g -mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp" CACHE INTERNAL "asm compiler flags")
+set (CMAKE_ASM_FLAGS "-g ${STM32F7_ARCH}" CACHE INTERNAL "asm compiler flags")
 # LDFLAGS
-set (CMAKE_EXE_LINKER_FLAGS "-g -Wl,--gc-sections -mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp -mabi=aapcs" CACHE INTERNAL "executable linker flags")
-set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${LINKER_FILE}")
+set (CMAKE_EXE_LINKER_FLAGS "${STM32F7_ARCH} -Wl,--gc-sections -lm -T${LINKER_FILE}")
+set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" CACHE INTERNAL "executable linker flags")
 
 message(STATUS "System Processor      : ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS
