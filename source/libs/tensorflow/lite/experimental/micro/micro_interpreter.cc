@@ -181,7 +181,7 @@ TfLiteStatus MicroInterpreter::Invoke() {
   auto opcodes = model_->operator_codes();
   for (flatbuffers::uoffset_t i = 0; i < operators_->size(); ++i) {
     /* reset timeout tmr */
-    glb_op_tmr = 0;
+    // glb_op_tmr = 0;
     const auto* op = operators_->Get(i);
     flatbuffers::uoffset_t index = op->opcode_index();
     if (index < 0 || index >= opcodes->size()) {
@@ -280,8 +280,8 @@ TfLiteStatus MicroInterpreter::Invoke() {
     if (registration->free) {
       registration->free(&context_, user_data);
     }
-    uint32_t stop_ms = glb_op_tmr;
-    error_reporter_->Report("%s: %d msec\n", EnumNameBuiltinOperator(op_type), stop_ms);
+    // uint32_t stop_ms = glb_op_tmr;
+    // error_reporter_->Report("%s: %d msec\n", EnumNameBuiltinOperator(op_type), stop_ms);
   }
   return status;
 }
