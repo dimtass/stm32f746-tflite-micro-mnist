@@ -50,7 +50,6 @@ if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm-none-eabi")
 endif()
 
 if (USE_CORTEX_NN)
-    set(STM32F7_DEFINES "${STM32F7_DEFINES} -DARM_MATH_DSP")
     include(cmake/cmsis_dsp_lib.cmake)
     include(cmake/cmsis_nn_lib.cmake)
 endif()
