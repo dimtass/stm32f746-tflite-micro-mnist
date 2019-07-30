@@ -207,3 +207,8 @@ flatc --python -o jupyter_notebook/ ./source/schema/schema.fbs
 * `CMSIS-DSP version`: V1.6.0
 * `HAL Driver Library version`: 1.2.6
 
+## License
+The license is MIT and you can use the code however you like.
+
+## Author
+Dimitris Tassopoulos <dimtass@gmail.com>
