@@ -9,7 +9,7 @@
 echo "Building the project in Linux environment"
 
 # Toolchain path
-: ${TOOLCHAIN_DIR:="/opt/toolchains/gcc-arm-none-eabi-8-2019-q3-update"}
+: ${TOOLCHAIN_DIR:="/opt/toolchains/gcc-arm-none-eabi-9-2019-q4-major"}
 # select cmake toolchain
 : ${CMAKE_TOOLCHAIN:=TOOLCHAIN_arm_none_eabi_cortex_m7.cmake}
 # select to clean previous builds
@@ -17,7 +17,9 @@ echo "Building the project in Linux environment"
 # select to create eclipse project files
 : ${ECLIPSE_IDE:=false}
 # Select DSP/NN lib use
-: ${USE_CORTEX_NN:="OFF"}
+: ${USE_CMSIS_NN:="OFF"}
+# Select compressed/uncompressed model use
+: ${USE_COMP_MODEL:="OFF"}
 # Select HAL/LL lib use
 : ${USE_HAL_DRIVER:="OFF"}
 # Select Stdperiph lib use
@@ -53,10 +55,11 @@ if [ "${ARCHITECTURE}" == "stm32" ]; then
     CMAKE_FLAGS="${CMAKE_FLAGS} \
                 -DTOOLCHAIN_DIR=${TOOLCHAIN_DIR} \
                 -DCMAKE_TOOLCHAIN_FILE=${SCRIPTS_CMAKE}/${CMAKE_TOOLCHAIN} \
-                -DUSE_CORTEX_NN=${USE_CORTEX_NN} \
+                -DUSE_CMSIS_NN=${USE_CMSIS_NN} \
                 -DUSE_HAL_DRIVER=${USE_HAL_DRIVER} \
                 -DUSE_FREERTOS=${USE_FREERTOS} \
                 -DUSE_OVERCLOCK=${USE_OVERCLOCK} \
+                -DUSE_COMP_MODEL=${USE_COMP_MODEL} \
                 -DSRC=${SRC} \
                 "
 else
@@ -77,6 +80,9 @@ echo "cmake flags       : ${CMAKE_FLAGS}"
 echo "cmake scripts     : ${SCRIPTS_CMAKE}"
 echo "IDE generator     : ${IDE_GENERATOR}"
 echo "Threads           : ${PARALLEL}"
+echo "USE_OVERCLOCK     : ${USE_OVERCLOCK}"
+echo "USE_CMSIS_NN      : ${USE_CMSIS_NN}"
+echo "USE_COMP_MODEL    : ${USE_COMP_MODEL}"
 
 mkdir -p build-stm32
 cd build-stm32
