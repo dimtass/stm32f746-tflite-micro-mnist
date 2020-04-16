@@ -1,0 +1,13 @@
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: dimtass/stm32-cde-image:0.1
+    steps:
+      - checkout
+      - run:
+          name: Build firmware
+          command: |
+            git submodule sync
+            git submodule update --init --recursive
+            CLEANBUILD=true CLEANBUILD=true USE_OVERCLOCK=OFF USE_CMSIS_NN=OFF USE_COMP_MODEL=OFF ./build.sh && CLEANBUILD=true USE_OVERCLOCK=ON USE_CMSIS_NN=ON USE_COMP_MODEL=ON ./build.sh
