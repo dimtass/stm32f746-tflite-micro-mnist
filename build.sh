@@ -21,13 +21,13 @@ echo "Building the project in Linux environment"
 # Select compressed/uncompressed model use
 : ${USE_COMP_MODEL:="OFF"}
 # Select HAL/LL lib use
-: ${USE_HAL_DRIVER:="OFF"}
+: ${USE_HAL_DRIVER:="ON"}
 # Select Stdperiph lib use
 : ${USE_FREERTOS:="OFF"}
 # Use overclock
 : ${USE_OVERCLOCK:="OFF"}
 # Select source folder. Give a false one to trigger an error
-: ${SRC:="__"}
+: ${SRC:="src"}
 
 # Set default arch to stm32
 ARCHITECTURE=stm32
