@@ -11,14 +11,14 @@ jobs:
             git submodule sync;
             git submodule update --init --recursive;
             CLEANBUILD=true CLEANBUILD=true USE_OVERCLOCK=OFF USE_CMSIS_NN=OFF USE_COMP_MODEL=OFF ./build.sh;
-            mkdir /tmp/artifacts;
-            cp build-stm32/stm32f7-mnist-tflite.bin /tmp/artifacts/stm32f7-mnist-tflite.bin;
+            mkdir -p /tmp/artifacts;
+            cp build-stm32/src/stm32f7-mnist-tflite.bin /tmp/artifacts/stm32f7-mnist-tflite.bin;
             CLEANBUILD=true USE_OVERCLOCK=ON USE_CMSIS_NN=ON USE_COMP_MODEL=ON ./build.sh;
-            cp build-stm32/stm32f7-mnist-tflite.bin /tmp/artifacts/stm32f7-mnist-tflite-cmsis-nn.bin;
+            cp build-stm32/src/stm32f7-mnist-tflite.bin /tmp/artifacts/stm32f7-mnist-tflite-cmsis-nn.bin;
       
       - store_artifacts:
-          path: /tmp/stm32f7-mnist-tflite.bin
+          path: /tmp/artifacts/stm32f7-mnist-tflite.bin
           destination: artifact-file
     
       - store_artifacts:
-          path: /tmp/stm32f7-mnist-tflite-cmsis-nn.bin
+          path: /tmp/artifacts/stm32f7-mnist-tflite-cmsis-nn.bin
