@@ -1,6 +1,8 @@
 MNIST inference on STM32F746 using TensorFlow Lite for Microcontrollers
 ----
 
+[![dimtass](https://circleci.com/gh/dimtass/stm32f303-ccmram-test.svg?style=svg)](https://circleci.com/gh/dimtass/stm32f303-ccmram-test)
+
 In this project you can evaluate the MNIST database or your hand-written
 digits (using the included jupyter notebook) on the STM32F746.
 This example is tested on the [STM32F7 discovery](https://www.st.com/en/evaluation-tools/32f746gdiscovery.html)
@@ -13,6 +15,10 @@ The base project is derived from my CMAKE template for the STM32F7xx
 > Note: This project derived from this blog post [here](https://www.stupid-projects.com/tensorflow-2-1-0-for-microcontrollers-benchmarks-on-stm32f746/), which is an update of
 this post [here](https://www.stupid-projects.com/machine-learning-on-embedded-part-3/).
 The whole series starts from [here](https://www.stupid-projects.com/machine-learning-on-embedded-part-1/)
+
+This repo has the following tags:
+* `v1.14.0`: using the tensorflow lite for microcontrollers v1.14.0
+* `v2.1.0`: using the tensorflow lite for microcontrollers v2.1.0
 
 ## Usage
 First you need to build and upload the project on the stm32f7.
