@@ -18,7 +18,8 @@ jobs:
       
       - store_artifacts:
           path: /tmp/artifacts/stm32f7-mnist-tflite.bin
-          destination: artifact-file
+          destination: stm32f7-mnist-tflite.bin
     
       - store_artifacts:
           path: /tmp/artifacts/stm32f7-mnist-tflite-cmsis-nn.bin
+          destination: stm32f7-mnist-tflite-cmsis-nn.bin
