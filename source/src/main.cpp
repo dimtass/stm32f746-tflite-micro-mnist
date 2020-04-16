@@ -23,18 +23,23 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "comm_buffer.h"
 #include "debug_trace.h"
 #include "digit.h"
-#include "model_data.h"
 #include "timer_sched.h"
-#include <stdio.h>
 
-#include "all_ops_resolver.h"
-#include "micro_error_reporter.h"
-#include "micro_interpreter.h"
+#if defined(COMP_MODEL)
+#include "model_data_compressed.h"
+#else
+#include "model_data_uncompressed.h"
+#endif
+
+#include "tensorflow/lite/micro/kernels/all_ops_resolver.h"
+#include "tensorflow/lite/micro/micro_error_reporter.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/version.h"
 #include "schema_generated.h"
-#include "version.h"
 
 #include "mnist_schema_generated.h"
 /* USER CODE END Includes */
@@ -83,9 +88,9 @@ DECLARE_COMM_BUFFER(dbg_uart, UART_BUFFER_SIZE, UART_BUFFER_SIZE);
 DECLARE_COMM_BUFFER(fb_uart, UART_BUFFER_SIZE, FB_UART_BUFFER_SIZE);
 
 __IO uint32_t glb_tmr_1ms = 0;
-__IO uint32_t glb_perf_tmr, glb_tmr_1sec = 0;
 __IO uint8_t tmp_rx, tmp_rx2 = 0;
 __IO uint32_t rx_timeout, rx_timeout_uart7 = 0;
+__IO float glb_inference_time_ms = 0;
 
 uint32_t trace_levels;
 
@@ -96,22 +101,15 @@ struct obj_timer_t *benchmark_timer;
 static LIST_HEAD(obj_timer_list);
 
 struct tflite_model {
-    const tflite::Model *model;
-    tflite::SimpleTensorAllocator *tensor_allocator;
-    tflite::ErrorReporter *error_reporter;
-    tflite::ops::micro::AllOpsResolver resolver; // This pulls in all the operation implementations we need
-    tflite::MicroInterpreter *interpreter;
-    uint8_t tensor_arena[TENSOR_ARENA_SIZE];
+    const tflite::Model* model;
+    tflite::ErrorReporter* error_reporter;
+    tflite::MicroInterpreter* interpreter;
+    TfLiteTensor* input;
+    TfLiteTensor* output;
     int inference_count;
+    uint8_t tensor_arena[TENSOR_ARENA_SIZE];
 };
 struct tflite_model tf;
-
-struct dwtTime {
-    uint32_t fcpu;
-    int s;
-    int ms;
-    int us;
-};
 
 /* USER CODE END PV */
 
@@ -128,12 +126,7 @@ void dbg_uart_parser(uint8_t *buffer, size_t bufferlen, uint8_t sender);
 void fb_uart_parser(uint8_t *buffer, size_t bufferlen, uint8_t sender);
 uint32_t disableInts(void);
 void restoreInts(uint32_t state);
-void dwtIpInit(void);
-void dwtReset(void);
-uint32_t dwtGetCycles(void);
 uint32_t systemCoreClock(void);
-int dwtCyclesToTime(uint64_t clks, struct dwtTime *t);
-float dwtCyclesToFloatMs(uint64_t clks);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -164,12 +157,6 @@ void main_loop()
             fb_uart_parser(fb_uart.rx_buffer, fb_uart.rx_ptr_in, 0);
             fb_uart.rx_ptr_in = 0;
         }
-        glb_tmr_1sec++;
-    }
-
-    if (glb_tmr_1sec >= 1000) {
-        glb_tmr_1sec = 0;
-        // TRACE(("1 sec\n"));
     }
 }
 /* USER CODE END 0 */
@@ -203,7 +190,6 @@ int main(void)
     SystemClock_Config();
 
     /* USER CODE BEGIN SysInit */
-    dwtIpInit();
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
@@ -226,20 +212,28 @@ int main(void)
 
     // Map the model into a usable data structure. This doesn't involve any
     // copying or parsing, it's a very lightweight operation.
-    tf.model = ::tflite::GetModel(jupyter_notebook_mnist_tflite);
+    tf.model = tflite::GetModel(jupyter_notebook_mnist_tflite);
     if (tf.model->version() != TFLITE_SCHEMA_VERSION) {
-        tf.error_reporter->Report("Model provided is schema version %d not equal "
-                                  "to supported version %d.\n",
-                                  tf.model->version(), TFLITE_SCHEMA_VERSION);
+    	TF_LITE_REPORT_ERROR(tf.error_reporter,
+                         "Model provided is schema version %d not equal "
+                         "to supported version %d.",
+                         tf.model->version(), TFLITE_SCHEMA_VERSION);
     }
 
-    // Create an area of memory to use for input, output, and intermediate arrays.
-    // Finding the minimum value for your model may require some trial and error.
-    tf.tensor_allocator = new tflite::SimpleTensorAllocator(tf.tensor_arena, TENSOR_ARENA_SIZE);
+	// This pulls in all the operation implementations we need.
+	// NOLINTNEXTLINE(runtime-global-variables)
+	static tflite::ops::micro::AllOpsResolver resolver;
 
     // Build an interpreter to run the model with
-    tf.interpreter = new tflite::MicroInterpreter(tf.model, tf.resolver, tf.tensor_allocator, tf.error_reporter);
+    tf.interpreter = new tflite::MicroInterpreter(tf.model, resolver, tf.tensor_arena, TENSOR_ARENA_SIZE, tf.error_reporter);
+
+	// Allocate memory from the tensor_arena for the model's tensors.
+	TfLiteStatus allocate_status = tf.interpreter->AllocateTensors();
+	if (allocate_status != kTfLiteOk) {
+		TF_LITE_REPORT_ERROR(tf.error_reporter, "AllocateTensors() failed");
+	}
     tf.inference_count = 0;
+
 
     /* USER CODE END 2 */
 
@@ -316,22 +310,18 @@ void RunInference(struct tflite_model *tf, float *data, size_t data_size, uint8_
 
     if (debug) TRACE(("Running inference...\n"));
 
-    // glb_perf_tmr = 0;
     uint32_t ints = disableInts();
-    dwtReset();
+    glb_inference_time_ms = 0;
     // Run the model on this input and make sure it succeeds.
     TfLiteStatus invoke_status = tf->interpreter->Invoke();
     if (invoke_status != kTfLiteOk) {
         tf->error_reporter->Report("Invoke failed\n");
     }
-    uint32_t cycles = dwtGetCycles();
     restoreInts(ints);
-    
-    float time_ms = dwtCyclesToFloatMs(cycles);
 
 	flatbuffers::FlatBufferBuilder fbb;
     auto out_vect = fbb.CreateVector((float*) output->data.f, 10);
-    auto output_f = MnistProt::CreateInferenceOutput(fbb, out_vect, 0, time_ms);
+    auto output_f = MnistProt::CreateInferenceOutput(fbb, out_vect, 0, glb_inference_time_ms);
 
     MnistProt::CommandsBuilder builder(fbb);
     builder.add_cmd(MnistProt::Command_CMD_INFERENCE_OUTPUT);
@@ -345,7 +335,7 @@ void RunInference(struct tflite_model *tf, float *data, size_t data_size, uint8_
     HAL_UART_Transmit(&huart7, (uint8_t *)buf, buf_size, 10);
 
     if (debug) {
-        TRACE(("Done in %f msec...\n", time_ms));
+        TRACE(("Done in %f msec...\n", glb_inference_time_ms));
         for (size_t i = 0; i < 10; i++) {
             TRACE(("Out[%d]: %f\n", i, output->data.f[i]));
         }
@@ -586,58 +576,6 @@ void restoreInts(uint32_t state)
    __set_PRIMASK(state);
 }
 
-void dwtIpInit(void)
-{
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-
-#ifdef STM32F7
-    DWT->LAR = 0xC5ACCE55;
-#endif
-
-    DWT->CYCCNT = 0;
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk | DWT_CTRL_CPIEVTENA_Msk;
-}
-
-void dwtReset(void)
-{
-    DWT->CYCCNT = 0; /* Clear DWT cycle counter */
-}
-
-uint32_t dwtGetCycles(void)
-{
-    return DWT->CYCCNT;
-}
-
-uint32_t systemCoreClock(void)
-{
-    return HAL_RCC_GetSysClockFreq();
-}
-
-int dwtCyclesToTime(uint64_t clks, struct dwtTime *t)
-{
-    if (!t)
-        return -1;
-    uint32_t fcpu = systemCoreClock();
-    uint64_t s  = clks / fcpu;
-    uint64_t ms = (clks * 1000) / fcpu;
-    uint64_t us = (clks * 1000 * 1000) / fcpu;
-    ms -= (s * 1000);
-    us -= (ms * 1000 + s * 1000000);
-    t->fcpu = fcpu;
-    t->s = s;
-    t->ms = ms;
-    t->us = us;
-    return 0;
-}
-
-
-float dwtCyclesToFloatMs(uint64_t clks)
-{
-    float res;
-    float fcpu = (float)systemCoreClock();
-    res = ((float)clks * (float)1000.0) / fcpu;
-    return res;
-}
 
 #ifdef __cplusplus
 extern "C" {

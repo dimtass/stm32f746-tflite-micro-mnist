@@ -1,17 +1,14 @@
 # Author: Dimitris Tassopoulos <dimtass@gmail.com>
 
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.5)
 
 project(stm32f7-mnist-tflite LANGUAGES C CXX)
 
-option(USE_CORTEX_NN "Use Cortex-M7 DSP/NN lib" OFF)
+option(USE_CMSIS_NN "Use Cortex-M7 DSP/NN lib" OFF)
 option(USE_HAL_DRIVER "Use HAL Driver library" OFF)
 option(USE_FREERTOS "Use FreeRTOS" OFF)
 option(USE_OVERCLOCK "Overclock the STM7" OFF)
-
-# set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH} ")
-# find_library(ARM_MATH_LIB arm_cortexM7lfsp_math HINT ${CMAKE_SOURCE_DIR}/libs/CMSIS/DSP/Lib/GCC)
-# message(STATUS "ARM_MATH_LIB: ${ARM_MATH_LIB}\n")
+option(USE_COMP_MODEL "Use compressed model" OFF)
 
 set(DEVICE_CONFIG_DIR ${CMAKE_SOURCE_DIR}/libs/CMSIS/Device/ST/STM32F7xx)
 
@@ -36,6 +33,10 @@ if (USE_OVERCLOCK)
     set(STM32F7_DEFINES "${STM32F7_DEFINES} -DOVERCLOCK")
 endif()
 
+if (USE_COMP_MODEL)
+    set(STM32F7_DEFINES "${STM32F7_DEFINES} -DCOMP_MODEL")
+endif()
+
 # set compiler optimisations
 set(COMPILER_OPTIMISATION "-Og -g3")
 
@@ -49,7 +50,7 @@ if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm-none-eabi")
     message(FATAL_ERROR "Invalid CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-if (USE_CORTEX_NN)
+if (USE_CMSIS_NN)
     include(cmake/cmsis_dsp_lib.cmake)
     include(cmake/cmsis_nn_lib.cmake)
 endif()
@@ -85,7 +86,7 @@ enable_language(ASM)
 
 ## Override toolchain flags ##
 # CFLAGS
-set (STM32F7_ARCH "-mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard")
+set (STM32F7_ARCH "-mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mfp16-format=alternative")
 set (CMAKE_C_FLAGS "${COMPILER_OPTIMISATION} ${STM32F7_DEFINES} \
                 ${STM32F7_ARCH} \
                 -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 \

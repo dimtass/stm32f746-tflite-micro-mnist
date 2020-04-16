@@ -42,7 +42,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-extern volatile uint32_t glb_op_tmr;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -183,8 +182,6 @@ void SysTick_Handler(void)
     HAL_IncTick();
     /* USER CODE BEGIN SysTick_IRQn 1 */
     glb_tmr_1ms++;
-    glb_perf_tmr++;
-    glb_op_tmr++;
     /* USER CODE END SysTick_IRQn 1 */
 }
 
