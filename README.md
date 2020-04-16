@@ -10,7 +10,8 @@ changes that are needed.
 The base project is derived from my CMAKE template for the STM32F7xx
 [here](https://bitbucket.org/dimtass/stm32f7xx_cmake_template).
 
-> Note: This project derived from this blog post [here](https://www.stupid-projects.com/machine-learning-on-embedded-part-3/)
+> Note: This project derived from this blog post [here](https://www.stupid-projects.com/tensorflow-2-1-0-for-microcontrollers-benchmarks-on-stm32f746/), which is an update of
+this post [here](https://www.stupid-projects.com/machine-learning-on-embedded-part-3/).
 The whole series starts from [here](https://www.stupid-projects.com/machine-learning-on-embedded-part-1/)
 
 ## Usage
@@ -39,7 +40,6 @@ And then browse to the `jupyter_notebook/MNIST-TensorFlow.ipynb`
 and run/use the notebook.
 
 ## Build
-
 To select the which libraries you want to use you need to provide
 cmake with the proper options. By default all the options are set
 to `OFF`. The supported options are:
@@ -48,45 +48,44 @@ to `OFF`. The supported options are:
 * `USE_HAL_DRIVER`: If set to `ON` enables the HAL Driver library
 * `USE_FREERTOS`: If set to `ON` enables FreeRTOS
 
-You also need to provide cmake with the source folder by pointing
-the folder to the `SRC` parameter.
+If you don't use the `docker-build.sh` script to build the code then you also need to
+provide the path of the toolchain to use in the `CMAKE_TOOLCHAIN`.
 
-Finally, you also need to provide the path of the toolchain to
-use in the `CMAKE_TOOLCHAIN`.
+You can build 2 different versions of this code. The one is use the default `depthwise_conv`
+function and the other is to build the `cmsis-nn` version. You can select which
+version to build using the `USE_CORTEX_NN` cmake option.
 
-You can build 3 different version of this code. The one is use the
-default `depthwise_conv` function, the other is to build the `portable_optimized`
-version and last to build the `cmsis-nn` version. For the first two,
-you have to select the proper version inside the `cmake/tensorflow_lite_micro.cmake`
-file, where you'll see the following lines:
-
-```cmake
-set(TENSORFLOW_LITE_SRC
-    # ${TENSORFLOW_LITE_DIR}/lite/experimental/micro/kernels/depthwise_conv.cc
-    ${TENSORFLOW_LITE_DIR}/lite/experimental/micro/kernels/portable_optimized/depthwise_conv.cc
-)
-```
-
-By default, the `portable_optimized` version is selected, but you can comment
-that line and uncomment the other one. Then you can build with the
-following command:
-
-```sh
-CLEANBUILD=true USE_HAL_DRIVER=ON SRC=src ./build.sh
-```
-
-To build the binary using the Cortex-M and NN libs, then you need
-to run the following command:
+To build the binary using the CMSIS-NN and CMSIS-DSP, then you need to run the following command:
 
 ```sh\
-CLEANBUILD=true USE_HAL_DRIVER=ON USE_CORTEX_NN=ON SRC=src ./build.sh
+CLEANBUILD=true USE_CORTEX_NN=ON SRC=src ./build.sh
 ```
+
+Finally, I've added two models, the one is the default model without optimized
+weights which is located in `source/src/inc/model_data_uncompressed.h` and it's
+2.1MB! The other model is the one with the compressed weights and it's located
+in `source/src/inc/model_data_compressed.h` and it's ~614KB. You can select which
+model to use while building the code with the `USE_COMP_MODEL` cmake flag like this:
+
+```sh
+CLEANBUILD=true USE_OVERCLOCK=OFF USE_CMSIS_NN=OFF USE_COMP_MODEL=ON SRC=src ./build.sh
+```
+
+The default option is set to `OFF`.
+
+> Warning: for some reason the compressed model doesn't work properly and the MCU hangs.
 
 > Note: `CLEANBUILD=true` is only needed if you need to make a clean build
 otherwise you can skip it. When it's used then depending on your machine
 it will take quite some time as I'm building all the DSP and NN libs files.
-To make it a bit faster you can remove the files that are not needed in
-`cmake/cmsis_dsp_lib.cmake`.
+
+## Build with docker
+If you want to have the same build environment like the one I've used,
+then you can use my CDE image for stm32 and docker like this:
+
+```sh
+./docker-build.sh "CLEANBUILD=true USE_OVERCLOCK=OFF USE_CMSIS_NN=OFF USE_COMP_MODEL=ON SRC=src ./build.sh"
+```
 
 ## Overclocking
 I've added an overclocking flag that overclocks the CPU @ 280. That's maybe
@@ -103,7 +102,7 @@ lines here:
 You can change that number to the frequency you like. Then you need to build
 with the `USE_OVERCLOCK" flag, like this:
 ```sh
-CLEANBUILD=true USE_OVERCLOCK=ON USE_HAL_DRIVER=ON USE_CORTEX_NN=ON SRC=src ./build.sh
+CLEANBUILD=true USE_OVERCLOCK=ON USE_HAL_DRIVER=ON USE_CMSIS_NN=ON  ./build.sh
 ```
 
 > Warning: Any overclocking may be the source of unknown issues you may have.
@@ -131,6 +130,17 @@ The files that usually you need to get and place them in your
 In your case there might be more files. Usually are the files
 that are in the exported `Inc` and `Src` folder.
 
+## Serial ports
+The code uses 2 serial ports UART6 and UART7. UART6 is the debug port that you can
+use to run commands from the terminal. UART7 is used from the jupyter notebook for
+transfering serialized data with flatbuffers.
+
+For the STM32F7-disco board this is the UART6 and UART7 pinout
+
+UART | Tx | Rx
+-|-|-
+UART6 | D0 | D1
+UART7 | A5 | A4
 
 ## Cloning the code
 Because this repo has dependencies on other submodules, in order to
@@ -144,37 +154,27 @@ git clone --recursive -j8 https://dimtass@bitbucket.org/dimtass/stm32f746-tflite
 ```
 
 ## Flash
+To flash the firmware in Linux you need the texane/stlink tool.
+Then you can use the flash script like this:
+
+```sh
+./flash.sh
+```
+
+Otherwise you can build the firmware and then use any programmer you like.
+The elf, hex and bin firmwares are located in the `build-stm32` folder
+
+```sh
+./build-stm32/*/stm32f7-mnist-tflite.bin
+./build-stm32/*/stm32f7-mnist-tflite.hex
+./build-stm32/*/stm32f7-mnist-tflite.elf
+```
+
 To flash the HEX file in windows use st-link utility like this:
-```"C:\Program Files (x86)\STMicroelectronics\STM32 ST-LINK Utility\ST-LINK Utility\ST-LINK_CLI.exe" -c SWD -p build-stm32\src_\stm32-cmake-template.hex -Rst```
+```"C:\Program Files (x86)\STMicroelectronics\STM32 ST-LINK Utility\ST-LINK Utility\ST-LINK_CLI.exe" -c SWD -p build-stm32\src_\stm32f7-mnist-tflite.hex -Rst```
 
 To flash the bin in Linux:
-```st-flash --reset write build-stm32/src/stm32-cmake-template.bin 0x8000000```
-
-Just replace `src` with the proper folder in your case
-
-## Testing
-I've also added a script to test the current supported default projects.
-To use it just run:
-
-```sh
-./test.sh
-```
-
-If everything goes right you should see something like this:
-
-```sh
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON SRC=src_c_hal
----RESULT: SUCCESS
-
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON USE_FREERTOS=ON SRC=src_c_freertos
----RESULT: SUCCESS
-
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON SRC=src_cpp_hal
----RESULT: SUCCESS
-
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON USE_FREERTOS=ON SRC=src_cpp_freertos
----RESULT: SUCCESS
-```
+```st-flash --reset write build-stm32/src/stm32f7-mnist-tflite.bin 0x8000000```
 
 ## Flatbuffers
 You might need to use Google's flatbuffers in case you want to experiment
@@ -204,7 +204,7 @@ flatc --python -o jupyter_notebook/ ./source/schema/schema.fbs
 ## FW details
 * `CMSIS version`: 5.0.4
 * `CMSIS-NN version`: V.1.0.0
-* `CMSIS-DSP version`: V1.6.0
+* `CMSIS-DSP version`: V1.7.0
 * `HAL Driver Library version`: 1.2.6
 
 ## License
