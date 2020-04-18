@@ -25,7 +25,10 @@ set(OTHER_SRC_FILES "${DEVICE_CONFIG_DIR}/system_stm32f7xx.c")
 set(STM32F7_DEFINES " \
     -DIVECT_TAB_OFFSET=0x0 \
     -DSTM32F746xx \
+    -DSTM32F7 \
     -DARM_MATH_CM7 \
+    -DARM_MATH_DSP \
+    '-D__ARM_FEATURE_DSP=1' \
     '-D__FPU_PRESENT=1' \
     ")
 
