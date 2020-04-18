@@ -22,14 +22,8 @@ limitations under the License.
 #include "tensorflow/lite/micro/micro_optional_debug_tools.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "../../src/inc/dwt_tools.h"
 extern __IO float glb_inference_time_ms;
-#ifdef __cplusplus
-}
-#endif
 
 namespace tflite {
 namespace {

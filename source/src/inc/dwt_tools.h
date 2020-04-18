@@ -33,7 +33,6 @@ void dwt_reset(void)
 
 uint32_t dwt_get_cycles(void)
 {
-    printf("CYCCNT: %d\n", DWT->CYCCNT);
     return DWT->CYCCNT;
 }
 
