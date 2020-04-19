@@ -30,6 +30,8 @@ set(STM32F7_DEFINES " \
     -DARM_MATH_DSP \
     '-D__ARM_FEATURE_DSP=1' \
     '-D__FPU_PRESENT=1' \
+    -DARM_MATH_MATRIX_CHECK \
+    -DARM_MATH_ROUNDING \
     ")
 
 if (USE_OVERCLOCK)
@@ -41,7 +43,7 @@ if (USE_COMP_MODEL)
 endif()
 
 # set compiler optimisations
-set(COMPILER_OPTIMISATION "-Og -g3")
+set(COMPILER_OPTIMISATION "-O3")
 
 # add startup and linker file
 set(STARTUP_ASM_FILE "${CMAKE_SOURCE_DIR}/config/startup/startup_stm32f746xx.s")
@@ -62,6 +64,7 @@ endif()
 # CMSIS shared library
 # HAL Driver shared library
 if (USE_HAL_DRIVER)
+    set(STM32F7_DEFINES "${STM32F7_DEFINES} -DUSE_HAL_DRIVER")
     include(cmake/stm32f7_hal_driver.cmake)
 endif()
 
@@ -77,7 +80,7 @@ include (cmake/noarch_c_lib.cmake)
 
 # force stm builds to debug.  This is a hack as when release is set, it automatically 
 # sets the invalid -O3 flag on the assembler.
-set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_BUILD_TYPE Debug)
 
 # Resolve the issue with Eclipse's indexer and C/C++ mixed source files
 include(cmake/language_provider.cmake)
@@ -99,9 +102,27 @@ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} " CACHE INTERNAL "c compiler flags")
 # CXXFLAGS
 set (CMAKE_CXX_FLAGS "${COMPILER_OPTIMISATION} ${STM32F7_DEFINES} \
             ${STM32F7_ARCH} \
-            -fmessage-length=0 -ffunction-sections -fmessage-length=0 \
-            -Wall -lm -specs=nosys.specs -specs=nano.specs -u _printf_float")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti -s")
+            -DGEMMLOWP_ALLOW_SLOW_SCALAR_FALLBACK \
+            -DTFLITE_MCU \
+            -fno-rtti \
+            -ffast-math \
+            -fmessage-length=0 \
+            -fno-exceptions \
+            -fno-builtin \
+            -ffunction-sections \
+            -fdata-sections \
+            -funsigned-char \
+            -MMD \
+            -std=gnu++11 \
+            -Wvla \
+            -Wall \
+            -Wextra \
+            -Wno-unused-parameter \
+            -Wno-missing-field-initializers \
+            -fno-delete-null-pointer-checks \
+            -fomit-frame-pointer \
+            -s \
+            -lm -specs=nosys.specs -specs=nano.specs -u _printf_float")
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE INTERNAL "cxx compiler flags")
 
 # ASMFLAGS
