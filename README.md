@@ -72,14 +72,14 @@ that line and uncomment the other one. Then you can build with the
 following command:
 
 ```sh
-CLEANBUILD=true USE_HAL_DRIVER=ON SRC=src ./build.sh
+CLEANBUILD=true USE_HAL_DRIVER=ON ./build.sh
 ```
 
 To build the binary using the Cortex-M and NN libs, then you need
 to run the following command:
 
 ```sh\
-CLEANBUILD=true USE_HAL_DRIVER=ON USE_CORTEX_NN=ON SRC=src ./build.sh
+CLEANBUILD=true USE_HAL_DRIVER=ON USE_CMSIS_NN=ON ./build.sh
 ```
 
 > Note: `CLEANBUILD=true` is only needed if you need to make a clean build
@@ -87,6 +87,14 @@ otherwise you can skip it. When it's used then depending on your machine
 it will take quite some time as I'm building all the DSP and NN libs files.
 To make it a bit faster you can remove the files that are not needed in
 `cmake/cmsis_dsp_lib.cmake`.
+
+## Build with docker
+If you want to have the same build environment like the one I've used,
+then you can use my CDE image for stm32 and docker like this:
+
+```sh
+./docker-build.sh "CLEANBUILD=true USE_OVERCLOCK=OFF USE_CMSIS_NN=OFF USE_COMP_MODEL=ON SRC=src ./build.sh"
+```
 
 ## Overclocking
 I've added an overclocking flag that overclocks the CPU @ 280. That's maybe
@@ -103,7 +111,7 @@ lines here:
 You can change that number to the frequency you like. Then you need to build
 with the `USE_OVERCLOCK" flag, like this:
 ```sh
-CLEANBUILD=true USE_OVERCLOCK=ON USE_HAL_DRIVER=ON USE_CORTEX_NN=ON SRC=src ./build.sh
+CLEANBUILD=true USE_OVERCLOCK=ON USE_HAL_DRIVER=ON USE_CMSIS_NN=ON ./build.sh
 ```
 
 > Warning: Any overclocking may be the source of unknown issues you may have.
@@ -131,6 +139,17 @@ The files that usually you need to get and place them in your
 In your case there might be more files. Usually are the files
 that are in the exported `Inc` and `Src` folder.
 
+## Serial ports
+The code uses 2 serial ports UART6 and UART7. UART6 is the debug port that you can
+use to run commands from the terminal. UART7 is used from the jupyter notebook for
+transfering serialized data with flatbuffers.
+
+For the STM32F7-disco board this is the UART6 and UART7 pinout
+
+UART | Tx | Rx
+-|-|-
+UART6 | D0 | D1
+UART7 | A5 | A4
 
 ## Cloning the code
 Because this repo has dependencies on other submodules, in order to
@@ -144,37 +163,27 @@ git clone --recursive -j8 https://dimtass@bitbucket.org/dimtass/stm32f746-tflite
 ```
 
 ## Flash
+To flash the firmware in Linux you need the texane/stlink tool.
+Then you can use the flash script like this:
+
+```sh
+./flash.sh
+```
+
+Otherwise you can build the firmware and then use any programmer you like.
+The elf, hex and bin firmwares are located in the `build-stm32` folder
+
+```sh
+./build-stm32/*/stm32f7-mnist-tflite.bin
+./build-stm32/*/stm32f7-mnist-tflite.hex
+./build-stm32/*/stm32f7-mnist-tflite.elf
+```
+
 To flash the HEX file in windows use st-link utility like this:
-```"C:\Program Files (x86)\STMicroelectronics\STM32 ST-LINK Utility\ST-LINK Utility\ST-LINK_CLI.exe" -c SWD -p build-stm32\src_\stm32-cmake-template.hex -Rst```
+```"C:\Program Files (x86)\STMicroelectronics\STM32 ST-LINK Utility\ST-LINK Utility\ST-LINK_CLI.exe" -c SWD -p build-stm32\src_\stm32f7-mnist-tflite.hex -Rst```
 
 To flash the bin in Linux:
-```st-flash --reset write build-stm32/src/stm32-cmake-template.bin 0x8000000```
-
-Just replace `src` with the proper folder in your case
-
-## Testing
-I've also added a script to test the current supported default projects.
-To use it just run:
-
-```sh
-./test.sh
-```
-
-If everything goes right you should see something like this:
-
-```sh
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON SRC=src_c_hal
----RESULT: SUCCESS
-
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON USE_FREERTOS=ON SRC=src_c_freertos
----RESULT: SUCCESS
-
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON SRC=src_cpp_hal
----RESULT: SUCCESS
-
-Building test case: CLEANBUILD=true USE_HAL_DRIVER=ON USE_FREERTOS=ON SRC=src_cpp_freertos
----RESULT: SUCCESS
-```
+```st-flash --reset write build-stm32/src/stm32f7-mnist-tflite.bin 0x8000000```
 
 ## Flatbuffers
 You might need to use Google's flatbuffers in case you want to experiment
@@ -204,7 +213,7 @@ flatc --python -o jupyter_notebook/ ./source/schema/schema.fbs
 ## FW details
 * `CMSIS version`: 5.0.4
 * `CMSIS-NN version`: V.1.0.0
-* `CMSIS-DSP version`: V1.6.0
+* `CMSIS-DSP version`: V1.7.0
 * `HAL Driver Library version`: 1.2.6
 
 ## License
