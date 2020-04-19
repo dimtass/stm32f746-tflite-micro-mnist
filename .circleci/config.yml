@@ -1,0 +1,25 @@
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: dimtass/stm32-cde-image:0.1
+    steps:
+      - checkout
+      - run:
+          name: Build firmware
+          command: |
+            git submodule sync;
+            git submodule update --init --recursive;
+            CLEANBUILD=true CLEANBUILD=true USE_OVERCLOCK=OFF USE_CMSIS_NN=OFF ./build.sh;
+            mkdir -p /tmp/artifacts;
+            cp build-stm32/src/stm32f7-mnist-tflite.bin /tmp/artifacts/stm32f7-mnist-tflite.bin;
+            CLEANBUILD=true USE_OVERCLOCK=ON USE_CMSIS_NN=ON ./build.sh;
+            cp build-stm32/src/stm32f7-mnist-tflite.bin /tmp/artifacts/stm32f7-mnist-tflite-cmsis-nn.bin;
+      
+      - store_artifacts:
+          path: /tmp/artifacts/stm32f7-mnist-tflite.bin
+          destination: stm32f7-mnist-tflite-v1.14.0.bin
+    
+      - store_artifacts:
+          path: /tmp/artifacts/stm32f7-mnist-tflite-cmsis-nn.bin
+          destination: stm32f7-mnist-tflite-cmsis-nn-v1.14.0.bin
