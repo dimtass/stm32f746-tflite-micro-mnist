@@ -1,17 +1,13 @@
 # Author: Dimitris Tassopoulos <dimtass@gmail.com>
 
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.5)
 
 project(stm32f7-mnist-tflite LANGUAGES C CXX)
 
-option(USE_CORTEX_NN "Use Cortex-M7 DSP/NN lib" OFF)
+option(USE_CMSIS_NN "Use Cortex-M7 DSP/NN lib" OFF)
 option(USE_HAL_DRIVER "Use HAL Driver library" OFF)
 option(USE_FREERTOS "Use FreeRTOS" OFF)
 option(USE_OVERCLOCK "Overclock the STM7" OFF)
-
-# set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH} ")
-# find_library(ARM_MATH_LIB arm_cortexM7lfsp_math HINT ${CMAKE_SOURCE_DIR}/libs/CMSIS/DSP/Lib/GCC)
-# message(STATUS "ARM_MATH_LIB: ${ARM_MATH_LIB}\n")
 
 set(DEVICE_CONFIG_DIR ${CMAKE_SOURCE_DIR}/libs/CMSIS/Device/ST/STM32F7xx)
 
@@ -28,6 +24,7 @@ set(OTHER_SRC_FILES "${DEVICE_CONFIG_DIR}/system_stm32f7xx.c")
 set(STM32F7_DEFINES " \
     -DIVECT_TAB_OFFSET=0x0 \
     -DSTM32F746xx \
+    -DSTM32F7 \
     -DARM_MATH_CM7 \
     '-D__FPU_PRESENT=1' \
     ")
@@ -37,7 +34,7 @@ if (USE_OVERCLOCK)
 endif()
 
 # set compiler optimisations
-set(COMPILER_OPTIMISATION "-Og -g3")
+set(COMPILER_OPTIMISATION "-O3")
 
 # add startup and linker file
 set(STARTUP_ASM_FILE "${CMAKE_SOURCE_DIR}/config/startup/startup_stm32f746xx.s")
@@ -49,7 +46,14 @@ if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm-none-eabi")
     message(FATAL_ERROR "Invalid CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-if (USE_CORTEX_NN)
+if (USE_CMSIS_NN)
+    set(STM32F7_DEFINES "${STM32F7_DEFINES} \
+        -DARM_MATH_DSP \
+        '-D__ARM_FEATURE_DSP=1' \
+        -DARM_MATH_MATRIX_CHECK \
+        -DARM_MATH_ROUNDING \
+        ")
+
     include(cmake/cmsis_dsp_lib.cmake)
     include(cmake/cmsis_nn_lib.cmake)
 endif()
@@ -58,6 +62,7 @@ endif()
 # CMSIS shared library
 # HAL Driver shared library
 if (USE_HAL_DRIVER)
+    set(STM32F7_DEFINES "${STM32F7_DEFINES} -DUSE_HAL_DRIVER")
     include(cmake/stm32f7_hal_driver.cmake)
 endif()
 
@@ -71,10 +76,6 @@ include (cmake/tensorflow_lite_micro.cmake)
 # Add the arch independent C lib
 include (cmake/noarch_c_lib.cmake)
 
-# force stm builds to debug.  This is a hack as when release is set, it automatically 
-# sets the invalid -O3 flag on the assembler.
-set(CMAKE_BUILD_TYPE Debug)
-
 # Resolve the issue with Eclipse's indexer and C/C++ mixed source files
 include(cmake/language_provider.cmake)
 remove_from_SYSTEM_MACROS(CXX "__cplusplus;.*;")
@@ -85,7 +86,7 @@ enable_language(ASM)
 
 ## Override toolchain flags ##
 # CFLAGS
-set (STM32F7_ARCH "-mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard")
+set (STM32F7_ARCH "-mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mfp16-format=alternative")
 set (CMAKE_C_FLAGS "${COMPILER_OPTIMISATION} ${STM32F7_DEFINES} \
                 ${STM32F7_ARCH} \
                 -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 \
@@ -95,9 +96,27 @@ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} " CACHE INTERNAL "c compiler flags")
 # CXXFLAGS
 set (CMAKE_CXX_FLAGS "${COMPILER_OPTIMISATION} ${STM32F7_DEFINES} \
             ${STM32F7_ARCH} \
-            -fmessage-length=0 -ffunction-sections -fmessage-length=0 \
-            -Wall -lm -specs=nosys.specs -specs=nano.specs -u _printf_float")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti -s")
+            -DGEMMLOWP_ALLOW_SLOW_SCALAR_FALLBACK \
+            -DTFLITE_MCU \
+            -fno-rtti \
+            -ffast-math \
+            -fmessage-length=0 \
+            -fno-exceptions \
+            -fno-builtin \
+            -ffunction-sections \
+            -fdata-sections \
+            -funsigned-char \
+            -MMD \
+            -std=gnu++11 \
+            -Wvla \
+            -Wall \
+            -Wextra \
+            -Wno-unused-parameter \
+            -Wno-missing-field-initializers \
+            -fno-delete-null-pointer-checks \
+            -fomit-frame-pointer \
+            -s \
+            -lm -specs=nosys.specs -specs=nano.specs -u _printf_float")
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE INTERNAL "cxx compiler flags")
 
 # ASMFLAGS

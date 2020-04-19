@@ -83,9 +83,10 @@ DECLARE_COMM_BUFFER(dbg_uart, UART_BUFFER_SIZE, UART_BUFFER_SIZE);
 DECLARE_COMM_BUFFER(fb_uart, UART_BUFFER_SIZE, FB_UART_BUFFER_SIZE);
 
 __IO uint32_t glb_tmr_1ms = 0;
-__IO uint32_t glb_perf_tmr, glb_tmr_1sec = 0;
+__IO uint32_t glb_tmr_1sec = 0;
 __IO uint8_t tmp_rx, tmp_rx2 = 0;
 __IO uint32_t rx_timeout, rx_timeout_uart7 = 0;
+__IO float glb_inference_time_ms = 0;
 
 uint32_t trace_levels;
 
@@ -316,22 +317,18 @@ void RunInference(struct tflite_model *tf, float *data, size_t data_size, uint8_
 
     if (debug) TRACE(("Running inference...\n"));
 
-    // glb_perf_tmr = 0;
     uint32_t ints = disableInts();
-    dwtReset();
+    glb_inference_time_ms = 0;
     // Run the model on this input and make sure it succeeds.
     TfLiteStatus invoke_status = tf->interpreter->Invoke();
     if (invoke_status != kTfLiteOk) {
         tf->error_reporter->Report("Invoke failed\n");
     }
-    uint32_t cycles = dwtGetCycles();
     restoreInts(ints);
-    
-    float time_ms = dwtCyclesToFloatMs(cycles);
 
 	flatbuffers::FlatBufferBuilder fbb;
     auto out_vect = fbb.CreateVector((float*) output->data.f, 10);
-    auto output_f = MnistProt::CreateInferenceOutput(fbb, out_vect, 0, time_ms);
+    auto output_f = MnistProt::CreateInferenceOutput(fbb, out_vect, 0, glb_inference_time_ms);
 
     MnistProt::CommandsBuilder builder(fbb);
     builder.add_cmd(MnistProt::Command_CMD_INFERENCE_OUTPUT);
@@ -345,7 +342,7 @@ void RunInference(struct tflite_model *tf, float *data, size_t data_size, uint8_
     HAL_UART_Transmit(&huart7, (uint8_t *)buf, buf_size, 10);
 
     if (debug) {
-        TRACE(("Done in %f msec...\n", time_ms));
+        TRACE(("Done in %f msec...\n", glb_inference_time_ms));
         for (size_t i = 0; i < 10; i++) {
             TRACE(("Out[%d]: %f\n", i, output->data.f[i]));
         }

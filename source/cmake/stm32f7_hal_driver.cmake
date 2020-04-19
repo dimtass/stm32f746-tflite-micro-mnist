@@ -24,8 +24,6 @@ include_directories(
 # Get all source files from the Src directory
 aux_source_directory(${STM32F7_HAL_DRIVER_DIR}/Src STM32F7_HAL_DRIVER_SRC)
 
-set(STM32F7_DEFINES "${STM32F7_DEFINES} -DUSE_HAL_DRIVER")
-
 set_source_files_properties(${STM32F7_HAL_DRIVER_SRC}
     PROPERTIES COMPILE_FLAGS ${STM32F7_DEFINES}
 )
