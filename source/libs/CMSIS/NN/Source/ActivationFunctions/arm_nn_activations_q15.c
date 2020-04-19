@@ -41,21 +41,11 @@
  * @{
  */
 
-  /**
-   * @brief Q15 neural network activation function using direct table look-up
-   * @param[in,out]   data        pointer to input
-   * @param[in]       size        number of elements
-   * @param[in]       int_width   bit-width of the integer part, assume to be smaller than 3
-   * @param[in]       type        type of activation functions
-   * @return none.
+/**
+   * @brief neural network activation function using direct table look-up
    *
-   * @details
-   * 
-   * This is the direct table look-up approach.
+   * @note  Refer header file for details.
    *
-   * Assume here the integer part of the fixed-point is <= 3.
-   * More than 3 just not making much sense, makes no difference with
-   * saturation followed by any of these activation functions. 
    */
 
 void arm_nn_activations_direct_q15(q15_t * data, uint16_t size, uint16_t int_width, arm_nn_activation_type type)
@@ -84,11 +74,17 @@ void arm_nn_activations_direct_q15(q15_t * data, uint16_t size, uint16_t int_wid
         q15_t     out;
         q15_t     in = *pIn++;
         q15_t     frac = (uint32_t) in & bit_mask;
-        q15_t     value = lookup_table[__USAT(in >> shift_size, 8)];
-        q15_t     value2 = lookup_table[__USAT(1 + (in >> shift_size), 8)];
-
-        /* doing the interpolation here for better accuracy */
-        out = ((q31_t) (full_frac - frac) * value + (q31_t) value2 * frac) >> shift_size;
+        q15_t     value = lookup_table[(uint8_t)(in >> shift_size)];
+        if ((in >> shift_size) != 0x7f)
+        {
+            q15_t     value2 = lookup_table[(uint8_t)(1 + ((uint8_t)(in >> shift_size)))];
+            /* doing the interpolation here for better accuracy */
+            out = ((q31_t) (full_frac - frac) * value + (q31_t) value2 * frac) >> shift_size;
+        } else
+        {
+            /* the largest positive value does not have a right side for linear interpolation */
+            out = value;
+        }
 
         *pOut++ = out;
         i--;
