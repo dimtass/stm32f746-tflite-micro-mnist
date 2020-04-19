@@ -18,7 +18,8 @@ limitations under the License.
 #include "api/flatbuffer_conversions.h"
 #include "compatibility.h"
 
-volatile uint32_t glb_op_tmr = 0;
+#include "../../src/inc/dwt_tools.h"
+extern __IO float glb_inference_time_ms;
 
 namespace tflite {
 namespace {
@@ -180,8 +181,7 @@ TfLiteStatus MicroInterpreter::Invoke() {
   TfLiteStatus status = kTfLiteOk;
   auto opcodes = model_->operator_codes();
   for (flatbuffers::uoffset_t i = 0; i < operators_->size(); ++i) {
-    /* reset timeout tmr */
-    // glb_op_tmr = 0;
+    
     const auto* op = operators_->Get(i);
     flatbuffers::uoffset_t index = op->opcode_index();
     if (index < 0 || index >= opcodes->size()) {
@@ -267,6 +267,10 @@ TfLiteStatus MicroInterpreter::Invoke() {
       }
     }
 
+    /* reset dwt */
+    dwt_init();
+    dwt_reset();
+
     if (registration->invoke) {
       TfLiteStatus invoke_status = registration->invoke(&context_, &node);
       if (invoke_status != kTfLiteOk) {
@@ -276,12 +280,13 @@ TfLiteStatus MicroInterpreter::Invoke() {
         return kTfLiteError;
       }
     }
+    float time_ms = dwt_cycles_to_float_ms( dwt_get_cycles() );
+    glb_inference_time_ms += time_ms;
+    printf("%s: %f msec\n", OpNameFromRegistration(registration), time_ms);
 
     if (registration->free) {
       registration->free(&context_, user_data);
     }
-    // uint32_t stop_ms = glb_op_tmr;
-    // error_reporter_->Report("%s: %d msec\n", EnumNameBuiltinOperator(op_type), stop_ms);
   }
   return status;
 }
