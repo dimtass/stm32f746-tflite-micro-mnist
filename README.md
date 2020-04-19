@@ -1,6 +1,8 @@
 MNIST inference on STM32F746 using TensorFlow Lite for Microcontrollers
 ----
 
+[![dimtass](https://circleci.com/gh/dimtass/stm32f303-ccmram-test.svg?style=svg)](https://circleci.com/gh/dimtass/stm32f303-ccmram-test)
+
 In this project you can evaluate the MNIST database or your hand-written
 digits (using the included jupyter notebook) on the STM32F746.
 This example is tested on the [STM32F7 discovery](https://www.st.com/en/evaluation-tools/32f746gdiscovery.html)
