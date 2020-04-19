@@ -25,13 +25,8 @@ set(OTHER_SRC_FILES "${DEVICE_CONFIG_DIR}/system_stm32f7xx.c")
 set(STM32F7_DEFINES " \
     -DIVECT_TAB_OFFSET=0x0 \
     -DSTM32F746xx \
-    -DSTM32F7 \
     -DARM_MATH_CM7 \
-    -DARM_MATH_DSP \
-    '-D__ARM_FEATURE_DSP=1' \
     '-D__FPU_PRESENT=1' \
-    -DARM_MATH_MATRIX_CHECK \
-    -DARM_MATH_ROUNDING \
     ")
 
 if (USE_OVERCLOCK)
@@ -56,6 +51,12 @@ if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm-none-eabi")
 endif()
 
 if (USE_CMSIS_NN)
+    set(STM32F7_DEFINES "${STM32F7_DEFINES} \
+        -DARM_MATH_DSP \
+        '-D__ARM_FEATURE_DSP=1' \
+        -DARM_MATH_MATRIX_CHECK \
+        -DARM_MATH_ROUNDING \
+        ")
     include(cmake/cmsis_dsp_lib.cmake)
     include(cmake/cmsis_nn_lib.cmake)
 endif()
